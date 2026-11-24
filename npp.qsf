@@ -80,11 +80,14 @@ set_global_assignment -name VERILOG_FILE lynx/dprf.v
 set_global_assignment -name VERILOG_FILE lynx/lynx.v
 set_global_assignment -name VERILOG_FILE lynx/mist.v
 set_global_assignment -name VERILOG_FILE lynx/ps2k.v
+set_global_assignment -name VERILOG_FILE lynx/tape.v
 set_global_assignment -name VERILOG_FILE lynx/sdram.v
 set_global_assignment -name VERILOG_FILE lynx/video.v
 set_global_assignment -name VERILOG_FILE lynx/matrix.v
 set_global_assignment -name VERILOG_FILE lynx/UM6845R.v
 set_global_assignment -name VERILOG_FILE lynx/scandoubler.v
+set_global_assignment -name VERILOG_FILE lynx/pzx_player.v
+set_global_assignment -name VERILOG_FILE lynx/tap_player.v
 
 set_global_assignment -name QIP_FILE lynx/T80/T80.qip
 set_global_assignment -name VHDL_FILE lynx/tzxplayer.vhd

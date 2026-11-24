@@ -62,19 +62,36 @@ module npp
 	wire ne04M = ce4[3:0] == 11;
 	wire pe04M = ce4[3:0] == 5;
 
-//--- mist ----------------------------------------------------------------------------------------
+//--- video ---------------------------------------------------------------------------------------
 
-	wire hsync;
-	wire vsync;
 	wire r;
 	wire g;
 	wire b;
+	wire hsync;
+	wire vsync;
+
+//--- audio ---------------------------------------------------------------------------------------
+
+	wire[5:0] sound;
+	wire[15:0] mix = { 4'd0, sound, 4'd0 }+{ 4'd0, {12{ tape && status[4] }} };
+
+	i2s i2s(clock50, mix, mix, i2sCk, i2sWs, i2sQ);
+
+//--- mist ----------------------------------------------------------------------------------------
+
+	wire[63:0] status;
 
 	wire ps2kCk;
 	wire ps2kD;
 
 	wire[7:0] joy0;
 	wire[7:0] joy1;
+
+	wire       ready;
+	wire       dioE;
+	wire[26:0] dioA;
+	wire[ 7:0] dioD;
+	wire       dioW;
 
 	wire[ 1:0] fdcA;
 	wire[ 7:0] fdcD;
@@ -84,15 +101,8 @@ module npp
 	wire       fdcSel;
 	wire       fdcSide;
 
-	wire       romIo;
-	wire       tzxIo;
-	wire[31:0] dioSz;
-	wire[26:0] dioA;
-	wire[ 7:0] dioD;
-	wire       dioW;
-
-	wire       ready;
-	wire[63:0] status;
+	wire tapeEar;
+	wire tapeBusy;
 
 	mist #(.RGBW(8)) mist
 	(
@@ -101,17 +111,29 @@ module npp
 		.pe06M  (pe06M  ),
 		.pe04M  (pe04M  ),
 		.reset  (reset  ),
-		.hsync  (hsync  ),
-		.vsync  (vsync  ),
+		.spiCk  (spiCk  ),
+		.spiSs1 (spiSs1 ),
+		.spiSs2 (spiSs2 ),
+		.spiSs3 (spiSs3 ),
+		.spiMosi(spiMosi),
+		.spiMiso(spiMiso),
+		.status (status ),
 		.r      (r      ),
 		.g      (g      ),
 		.b      (b      ),
-		.sync   (sync   ),
+		.hsync  (hsync  ),
+		.vsync  (vsync  ),
 		.rgb    (rgb    ),
+		.sync   (sync   ),
 		.ps2kCk (ps2kCk ),
 		.ps2kD  (ps2kD  ),
 		.joy0   (joy0   ),
 		.joy1   (joy1   ),
+		.dioE   (dioE   ),
+		.dioA   (dioA   ),
+		.dioD   (dioD   ),
+		.dioW   (dioW   ),
+		.ready  (ready  ),
 		.fdcA   (fdcA   ),
 		.fdcD   (fdcD   ),
 		.fdcQ   (fdcQ   ),
@@ -119,32 +141,28 @@ module npp
 		.fdcW   (fdcW   ),
 		.fdcSel (fdcSel ),
 		.fdcSide(fdcSide),
-		.romIo  (romIo  ),
-		.tzxIo  (tzxIo  ),
-		.dioSz  (dioSz  ),
-		.dioA   (dioA   ),
-		.dioD   (dioD   ),
-		.dioW   (dioW   ),
-		.ready  (ready  ),
-		.status (status ),
-		.spiCk  (spiCk  ),
-		.spiSs1 (spiSs1 ),
-		.spiSs2 (spiSs2 ),
-		.spiSs3 (spiSs3 ),
-		.spiMosi(spiMosi),
-		.spiMiso(spiMiso)
+		.tapePlay(~play ),
+		.tapeStop(~stop ),
+		.tapeEar (tapeEar),
+		.tapeBusy(tapeBusy)
 	);
 
 	wire casM = status[3];
 	wire ramM = status[2:1] <= 1;
 	wire romX = status[2:1] == 1;
 
-//--- audio ---------------------------------------------------------------------------------------
+//--- matrix --------------------------------------------------------------------------------------
 
-	wire[5:0] sound;
-	wire[15:0] mix = { 4'd0, sound, 4'd0 }+{ 4'd0, {12{ tape && status[4] }} };
+	wire      strb;
+	wire[7:0] code;
 
-	i2s i2s(clock50, mix, mix, i2sCk, i2sWs, i2sQ);
+	ps2k ps2k(clock, ps2kCk, ps2kD, strb, code);
+
+	wire[3:0] row;
+	wire[7:0] col;
+	wire F9, play, stop, break;
+
+	matrix matrix(clock, strb, code, row, col, F9, play, stop, break);
 
 //--- memory --------------------------------------------------------------------------------------
 
@@ -221,11 +239,11 @@ module npp
 		.w2     (mem3W2 )
 	);
 
-	wire[23:0] sdrA  = { 7'd0, romIo ? { 1'b0, dioA[15:0] } : mem0R ? { 1'b0, romP, mem0A[12:0]} : { 1'b1, mem1A } };
-	wire[15:0] sdrD =  { 8'hFF, romIo ? dioD : mem1D };
+	wire[23:0] sdrA  = { 7'd0, dioE ? { 1'b0, dioA[15:0] } : mem0R ? { 1'b0, romP, mem0A[12:0]} : { 1'b1, mem1A } };
+	wire[15:0] sdrD =  { 8'hFF, dioE ? dioD : mem1D };
 	wire[15:0] sdrQ;
 	wire       sdrR = mem0R || mem1R;
-	wire       sdrW = romIo ? dioW : mem1W;
+	wire       sdrW = dioE ? dioW : mem1W;
 
 	sdram sdram
 	(
@@ -251,54 +269,12 @@ module npp
 
 	assign dramCk = clock96;
 
-//--- matrix --------------------------------------------------------------------------------------
-
-	wire      strb;
-	wire[7:0] code;
-
-	ps2k ps2k(clock, ps2kCk, ps2kD, strb, code);
-
-	wire[3:0] row;
-	wire[7:0] col;
-	wire F9, play, stop, break;
-
-	matrix matrix(clock, strb, code, row, col, F9, play, stop, break);
-
-//--- tzx -----------------------------------------------------------------------------------------
-
-	localparam TK = 512;
-	localparam TW = $clog2(TK*1024);
-
-	reg[TW-1:0] tzxSize;
-	always @(posedge clock) if(tzxIo) tzxSize <= dioSz[TW-1:0];
-
-	wire[TW-1:0] tzxA;
-	wire[7:0] tzxQ;
-
-	ram #(TK) ram(clock, tzxIo ? dioA[TW-1:0] : tzxA, dioD, tzxQ, tzxIo && dioW);
-
-	wire tzxBusy;
-	wire tzxTape;
-
-	tzx #(48000, TW) tzx
-	(
-		.clock  (clock  ),
-		.ce     (1'b1   ),
-		.a      (tzxA   ),
-		.d      (tzxQ   ),
-		.play   (!play  ),
-		.stop   (!stop  ),
-		.busy   (tzxBusy),
-		.size   (tzxSize),
-		.tape   (tzxTape)
-	);
-
 //--- lynx -----------------------------------------------------------------------------------------
 
 	wire reset = power && ready && F9 && !status[0];
 	wire rfsh;
 
-	wire tape = tzxBusy ? tzxTape : ~ear;
+	wire tape = tapeBusy ? tapeEar : ~ear;
 
 	lynx lynx
 	(
