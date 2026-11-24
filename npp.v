@@ -94,7 +94,7 @@ module npp
 	wire       ready;
 	wire[63:0] status;
 
-	mist mist
+	mist #(.RGBW(8)) mist
 	(
 		.clock  (clock  ),
 		.pe12M  (pe12M  ),
@@ -190,6 +190,9 @@ module npp
 	// wire[7:0] romQ;
 	// romm #(56, "../rom/lynx.mif") rom(clock, { romP, mem0A[12:0] }, romQ);
 
+	// wire[7:0] ramQ;
+	// ram #(64) mem1(clock, mem1A, mem1D, mem1Q, mem1W);
+
 	dprf #(16) mem2
 	(
 		.clock1 (clock  ),
@@ -217,9 +220,6 @@ module npp
 		.q2     (mem3Q2 ),
 		.w2     (mem3W2 )
 	);
-
-	// reg sdrR;
-	// always @(posedge clock) if(pe04M) sdrR <= mem0R || mem1R;
 
 	wire[23:0] sdrA  = { 7'd0, romIo ? { 1'b0, dioA[15:0] } : mem0R ? { 1'b0, romP, mem0A[12:0]} : { 1'b1, mem1A } };
 	wire[15:0] sdrD =  { 8'hFF, romIo ? dioD : mem1D };
@@ -250,30 +250,8 @@ module npp
 	);
 
 	assign dramCk = clock96;
-	// assign dramCe = 1'b1;
 
-	/*
-	wire[7:0] sdrQ;
-	ram #(128) mem
-	(
-		clock,
-		romIo ? { 1'b0, dioA[15:0] } : mem0R ? { 1'b0, romP, mem0A[12:0] } : { 1'b1, mem1A },
-		romIo ? dioD : mem1D,
-		sdrQ,
-		romIo ? dioW : mem1W
-	);
-
-	assign dramCs = 1'b1;
-	assign dramWe = 1'b1;
-	assign dramRas = 1'b1;
-	assign dramCas = 1'b1;
-	assign dramDQM = 2'd0;
-	assign dramDQ = 16'bZ;
-	assign dramBA = 2'd0;
-	assign dramA = 13'd0;
-	*/
-
-//--- keyboard ------------------------------------------------------------------------------------
+//--- matrix --------------------------------------------------------------------------------------
 
 	wire      strb;
 	wire[7:0] code;
@@ -282,9 +260,9 @@ module npp
 
 	wire[3:0] row;
 	wire[7:0] col;
-	wire F9, play, stop;
+	wire F9, play, stop, break;
 
-	matrix matrix(clock, strb, code, row, col, F9, play, stop);
+	matrix matrix(clock, strb, code, row, col, F9, play, stop, break);
 
 //--- tzx -----------------------------------------------------------------------------------------
 
@@ -333,15 +311,18 @@ module npp
 		.pe04M  (pe04M  ),
 		.reset  (reset  ),
 		.rfsh   (rfsh   ),
-		.hSync  (hsync  ),
-		.vSync  (vsync  ),
 		.r      (r      ),
 		.g      (g      ),
 		.b      (b      ),
-		.tape   (tape   ),
+		.blank  (       ),
+		.hSync  (hsync  ),
+		.vSync  (vsync  ),
 		.sound  (sound  ),
+		.tape   (tape   ),
+		.motor  (       ),
 		.row    (row    ),
 		.col    (col    ),
+		.break  (break  ),
 		.joy0   (joy0   ),
 		.joy1   (joy1   ),
 		.mem0A  (mem0A  ),
