@@ -101,8 +101,8 @@ module npp
 	wire       fdcSel;
 	wire       fdcSide;
 
-	wire tapeEar;
-	wire tapeBusy;
+	wire tzxEar;
+	wire tzxBusy;
 
 	mist #(.RGBW(8)) mist
 	(
@@ -141,10 +141,11 @@ module npp
 		.fdcW   (fdcW   ),
 		.fdcSel (fdcSel ),
 		.fdcSide(fdcSide),
-		.tapePlay(~play ),
-		.tapeStop(~stop ),
-		.tapeEar (tapeEar),
-		.tapeBusy(tapeBusy)
+		.tzxEar (tzxEar ),
+		.tzxBusy(tzxBusy),
+		.tzxPlay(~play  ),
+		.tzxStop(~stop  ),
+		.tzxMotor(      )
 	);
 
 	wire casM = status[3];
@@ -274,7 +275,7 @@ module npp
 	wire reset = power && ready && F9 && !status[0];
 	wire rfsh;
 
-	wire tape = tapeBusy ? tapeEar : ~ear;
+	wire tape = tzxBusy ? tzxEar : ~ear;
 
 	lynx lynx
 	(
